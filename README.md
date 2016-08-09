@@ -20,7 +20,7 @@ KVrPlayer_Android下载方式：
 * README.md 即本文档
 
 ## 4.快速集成
-
+[快速集成](https://github.com/ksvc/KVrPlayer_Android/wiki/KSYVrPlayerBasicExample)提供了SDK的基本使用示例，具体可见demo的具体代码
 
 ## 5.详细介绍
 关于金山云Android播放SDK更多的[信息](https://github.com/ksvc/KSYMediaPlayer_Android/wiki)
