@@ -52,4 +52,37 @@
        android:layout_width="wrap_content"
        android:layout_height="wrap_content" />
 
+   <LinearLayout
+       android:layout_width="match_parent"
+       android:layout_height="wrap_content"
+       android:layout_alignParentBottom="true">
+      <ImageView
+          android:id="@+id/vr_start"
+          android:layout_width="50dp"
+          android:layout_height="50dp"
+          android:background="@drawable/qyvideo_start_btn"/>
+
+      <RelativeLayout
+          android:layout_width="match_parent"
+          android:layout_height="wrap_content">
+
+
+         <TextView
+             android:id="@+id/vrplayer_time"
+             android:layout_width="wrap_content"
+             android:layout_height="wrap_content"
+             android:text="@string/time0"
+             android:layout_alignParentLeft="true"/>
+
+         <SeekBar
+             android:id="@+id/vrplayer_seekbar"
+             android:layout_width="match_parent"
+             android:layout_height="wrap_content"
+             android:layout_below="@+id/vrplayer_time"
+             android:focusable="true"/>
+
+      </RelativeLayout>
+
+
+   </LinearLayout>
 </RelativeLayout>
