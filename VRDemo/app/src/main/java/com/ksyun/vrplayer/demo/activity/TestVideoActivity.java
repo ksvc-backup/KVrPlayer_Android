@@ -9,12 +9,17 @@ import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Message;
 import android.util.SparseArray;
 import android.view.MotionEvent;
 import android.view.Surface;
 import android.view.View;
 import android.view.Window;
 import android.view.WindowManager;
+import android.widget.ImageView;
+import android.widget.SeekBar;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import com.asha.vrlib.MD360Director;
@@ -23,6 +28,7 @@ import com.asha.vrlib.MDVRLibrary;
 import com.ksyun.media.player.IMediaPlayer;
 import com.ksyun.media.player.KSYMediaPlayer;
 import com.ksyun.vrplayer.demo.R;
+import com.ksyun.vrplayer.demo.model.Strings;
 import com.ksyun.vrplayer.demo.util.Settings;
 
 import java.io.IOException;
@@ -32,9 +38,20 @@ import java.io.IOException;
  */
 public class TestVideoActivity extends Activity {
 
+    public static final int UPDATE_SEEKBAR = 1;
+
     private SharedPreferences settings;
     private String chooseview;
     private String choosedecode;
+    private Boolean mPause = false;
+
+
+
+    private ImageView vr_start;
+    private SeekBar vrplayer_seekbar;
+    private TextView vrplayer_time;
+    private Handler mHandler;
+
 
     boolean useHwCodec = false;
 
@@ -68,6 +85,7 @@ public class TestVideoActivity extends Activity {
         @Override
         public void onPrepared(IMediaPlayer mp) {
             cancelBusy();
+            setVideoProgress(0);
             mStatus = STATUS_PREPARED;
             mPlayer.start();
 
@@ -78,6 +96,27 @@ public class TestVideoActivity extends Activity {
         @Override
         public boolean onInfo(IMediaPlayer iMediaPlayer, int i, int i1) {
             return false;
+        }
+    };
+
+    private int mVideoProgress = 0;
+    private SeekBar.OnSeekBarChangeListener mSeekBarListener = new SeekBar.OnSeekBarChangeListener(){
+        @Override
+        public void onProgressChanged(SeekBar seekBar, int i, boolean b) {
+            if (b) {
+                mVideoProgress = i;
+            }
+        }
+
+        @Override
+        public void onStartTrackingTouch(SeekBar seekBar) {
+
+        }
+
+        @Override
+        public void onStopTrackingTouch(SeekBar seekBar) {
+            mPlayer.seekTo(mVideoProgress);
+            setVideoProgress(mVideoProgress);
         }
     };
 
@@ -97,7 +136,19 @@ public class TestVideoActivity extends Activity {
         choosedecode = settings.getString("choose_decode","undefind");
         chooseview = settings.getString("choose_view","undefind");
 
+
         // set content view
+        mHandler = new Handler(){
+            @Override
+            public void handleMessage(Message msg) {
+                super.handleMessage(msg);
+                switch (msg.what){
+                    case UPDATE_SEEKBAR:
+                        setVideoProgress(0);
+                        break;
+                }
+            }
+        };
 
 
         if(chooseview.equals(Settings.USESUFACE)){
@@ -110,6 +161,25 @@ public class TestVideoActivity extends Activity {
         }else{
             useHwCodec = false;
         }
+
+        vr_start = (ImageView)findViewById(R.id.vr_start);
+        vrplayer_seekbar = (SeekBar)findViewById(R.id.vrplayer_seekbar);
+        vrplayer_time = (TextView)findViewById(R.id.vrplayer_time);
+
+        vrplayer_seekbar.setOnSeekBarChangeListener(mSeekBarListener);
+        vr_start.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                mPause = !mPause;
+                if(mPause) {
+                    vr_start.setBackgroundResource(R.drawable.qyvideo_pause_btn);
+                    mPlayer.pause();
+                }else {
+                    vr_start.setBackgroundResource(R.drawable.qyvideo_start_btn);
+                    mPlayer.start();
+                }
+            }
+        });
 
 
 
@@ -286,4 +356,33 @@ public class TestVideoActivity extends Activity {
             }
         }
     }
+
+
+    public int setVideoProgress(int currentProgress) {
+
+        if(mPlayer == null)
+            return -1;
+
+        long time = currentProgress > 0 ? currentProgress : mPlayer.getCurrentPosition();
+        long length = mPlayer.getDuration();
+
+        // Update all view elements
+        vrplayer_seekbar.setMax((int)length);
+        vrplayer_seekbar.setProgress((int)time);
+
+        if(time >= 0)
+        {
+            String progress = Strings.millisToString(time) + "/" + Strings.millisToString(length);
+            vrplayer_time.setText(progress);
+        }
+
+        Message msg = new Message();
+        msg.what = UPDATE_SEEKBAR;
+
+        if(mHandler != null)
+            mHandler.sendMessageDelayed(msg, 1000);
+        return (int)time;
+    }
+
+
 }

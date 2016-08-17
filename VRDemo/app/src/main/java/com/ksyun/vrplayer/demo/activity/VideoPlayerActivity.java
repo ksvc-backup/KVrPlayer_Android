@@ -65,7 +65,6 @@ public class VideoPlayerActivity extends Activity implements TextureView.Surface
     public static final int UPDATE_QOSMESS  = 2;
     public static final int UPADTE_QOSVIEW = 3;
 
-
     private SharedPreferences settings;
     private String chooseview;
     private String choosedecode;
@@ -159,9 +158,6 @@ public class VideoPlayerActivity extends Activity implements TextureView.Surface
             if (mQosThread != null)
                 mQosThread.start();
 
-            //update UI
-//            mCpu.setVisibility(View.VISIBLE);
-//            mMemInfo.setVisibility(View.VISIBLE);
 
             if(ksyMediaPlayer.getServerAddress() != null)
                 mServerIp.setText("ServerIP: "+ ksyMediaPlayer.getServerAddress());
@@ -197,7 +193,6 @@ public class VideoPlayerActivity extends Activity implements TextureView.Surface
                 mVideoResolution.setVisibility(View.VISIBLE);
                 mFrameRate.setVisibility(View.VISIBLE);
                 mVideoBitrate.setVisibility(View.VISIBLE);
-                mPlayerPosition.setVisibility(View.VISIBLE);
                 mLoadText.setVisibility(View.VISIBLE);
                 mCpu.setVisibility(View.VISIBLE);
                 mMemInfo.setVisibility(View.VISIBLE);
@@ -212,7 +207,6 @@ public class VideoPlayerActivity extends Activity implements TextureView.Surface
                 mVideoResolution.setVisibility(View.GONE);
                 mFrameRate.setVisibility(View.GONE);
                 mVideoBitrate.setVisibility(View.GONE);
-                mPlayerPosition.setVisibility(View.GONE);
                 mLoadText.setVisibility(View.GONE);
                 mCpu.setVisibility(View.GONE);
                 mMemInfo.setVisibility(View.GONE);
