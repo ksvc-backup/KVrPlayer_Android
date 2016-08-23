@@ -336,6 +336,7 @@ public class TestVideoActivity extends Activity {
     @Override
     protected void onDestroy() {
         super.onDestroy();
+        mPlayer.release();
         mVRLibrary.onDestroy();
     }
 
