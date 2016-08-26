@@ -11,6 +11,7 @@ import android.hardware.SensorManager;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
+import android.util.Log;
 import android.util.SparseArray;
 import android.view.MotionEvent;
 import android.view.Surface;
@@ -37,6 +38,7 @@ import java.io.IOException;
  * Created by liubohua on 16/7/27.
  */
 public class TestVideoActivity extends Activity {
+    private static final String TAG = "TestVideoActivity";
 
     public static final int UPDATE_SEEKBAR = 1;
 
@@ -44,6 +46,7 @@ public class TestVideoActivity extends Activity {
     private String chooseview;
     private String choosedecode;
     private Boolean mPause = false;
+    private String path;
 
 
 
@@ -91,10 +94,42 @@ public class TestVideoActivity extends Activity {
 
         }
     };
+
+    private IMediaPlayer.OnBufferingUpdateListener mOnBufferingUpdateListener = new IMediaPlayer.OnBufferingUpdateListener() {
+        @Override
+        public void onBufferingUpdate(IMediaPlayer mp, int percent) {
+            long duration = mPlayer.getDuration();
+            long progress = duration * percent/100;
+            vrplayer_seekbar.setSecondaryProgress((int)progress);
+        }
+    };
     private IMediaPlayer.OnInfoListener mInfoListener = new IMediaPlayer.OnInfoListener(){
 
         @Override
         public boolean onInfo(IMediaPlayer iMediaPlayer, int i, int i1) {
+            switch (i) {
+                case KSYMediaPlayer.MEDIA_INFO_BUFFERING_START:
+                    Log.d(TAG, "Buffering Start.");
+                    break;
+                case KSYMediaPlayer.MEDIA_INFO_BUFFERING_END:
+                    Log.d(TAG, "Buffering End.");
+                    break;
+                case KSYMediaPlayer.MEDIA_INFO_AUDIO_RENDERING_START:
+                    Toast.makeText(getApplicationContext(), "Audio Rendering Start", Toast.LENGTH_SHORT).show();
+                    break;
+                case KSYMediaPlayer.MEDIA_INFO_VIDEO_RENDERING_START:
+                    Toast.makeText(getApplicationContext(), "Video Rendering Start", Toast.LENGTH_SHORT).show();
+                    break;
+                case KSYMediaPlayer.MEDIA_INFO_SUGGEST_RELOAD:
+                    // Player find a new stream(video or audio), and we could reload the video.
+                    if(mPlayer != null)
+                        mPlayer.reload(path, false);
+                    break;
+                case KSYMediaPlayer.MEDIA_INFO_RELOADED:
+                    Toast.makeText(getApplicationContext(), "Succeed to reload video.", Toast.LENGTH_SHORT).show();
+                    Log.d(TAG, "Succeed to reload video.");
+                    return false;
+            }
             return false;
         }
     };
@@ -182,8 +217,6 @@ public class TestVideoActivity extends Activity {
         });
 
 
-
-
         // init VR Library
         mVRLibrary = createVRLibrary();
         mPlayer = new KSYMediaPlayer.Builder(getApplicationContext()).build();
@@ -234,9 +267,10 @@ public class TestVideoActivity extends Activity {
     private void initMedia() {
 
         Intent intent = getIntent();
-        String path = intent.getStringExtra("path");
+        path = intent.getStringExtra("path");
         mPlayer.setOnPreparedListener(mPreparedListener);
         mPlayer.setOnInfoListener(mInfoListener);
+        mPlayer.setOnBufferingUpdateListener(mOnBufferingUpdateListener);
         mPlayer.setOnErrorListener(new IMediaPlayer.OnErrorListener() {
             @Override
             public boolean onError(IMediaPlayer mp, int what, int extra) {
@@ -263,6 +297,7 @@ public class TestVideoActivity extends Activity {
 
 
     }
+
 
     @Override
     public boolean onTouchEvent(MotionEvent event) {
