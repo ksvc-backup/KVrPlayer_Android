@@ -26,5 +26,7 @@ KVrPlayer_Android下载方式：
 关于金山云Android播放SDK更多的[信息](https://github.com/ksvc/KSYMediaPlayer_Android/wiki)
 
 ## 6.反馈与建议
-- 主页：[金山云](http://www.ksyun.com/)
+- 主页：[金山云](http://v.ksyun.com)
 - 邮箱：<zengfanping@kingsoft.com>
+- QQ讨论群：574179720
+- Issues: <https://github.com/ksvc/KVrPlayer_Android/issues>
