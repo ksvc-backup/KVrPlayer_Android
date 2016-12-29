@@ -65,7 +65,6 @@ public class TestVideoActivity extends Activity {
     static {
         sDisplayMode.put(MDVRLibrary.DISPLAY_MODE_NORMAL,"NORMAL");
         sDisplayMode.put(MDVRLibrary.DISPLAY_MODE_GLASS,"GLASS");
-        sDisplayMode.put(MDVRLibrary.PROJECTION_MODE_DOME180,"180degree");
 
         sInteractiveMode.put(MDVRLibrary.INTERACTIVE_MODE_MOTION,"MOTION");
         sInteractiveMode.put(MDVRLibrary.INTERACTIVE_MODE_TOUCH,"TOUCH");
