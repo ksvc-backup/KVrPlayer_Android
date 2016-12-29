@@ -5,15 +5,13 @@ import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
 import android.widget.CompoundButton;
-import android.widget.RadioButton;
-import android.widget.RadioGroup;
 import android.widget.Switch;
 import android.widget.Toast;
 
 import com.ksyun.vrplayer.demo.R;
 import com.ksyun.vrplayer.demo.util.Settings;
 
-public class SettingActivity extends AppCompatActivity implements RadioGroup.OnCheckedChangeListener{
+public class SettingActivity extends AppCompatActivity{
 
     public static final int GET_JSONDATA = 0x1001;
     public static final int PLAY_VIDEO = 0x1002;
@@ -21,15 +19,9 @@ public class SettingActivity extends AppCompatActivity implements RadioGroup.OnC
 
     private SharedPreferences settings ;
     private SharedPreferences.Editor editor;
-    private RadioButton radiosurface;
-    private RadioButton radiotexture;
-    private RadioButton radiosoft;
-    private RadioButton radiohard;
     private Switch debugswitch;
     private Switch vrswitch;
 
-    private RadioGroup mChooseSurface;
-    private RadioGroup mChooseCodec;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -38,22 +30,13 @@ public class SettingActivity extends AppCompatActivity implements RadioGroup.OnC
 
         settings = getSharedPreferences("SETTINGS",Context.MODE_PRIVATE);
         editor = settings.edit();
-        String chooseview = settings.getString("choose_view","信息为空");
-        String choosedecode = settings.getString("choose_decode","信息为空");
         String choosedebug = settings.getString("choose_debug","信息为空");
         String choosevr = settings.getString("choose_vr","信息为空");
-
-
-        mChooseSurface = (RadioGroup) findViewById(R.id.choose_surface);
-        mChooseCodec = (RadioGroup) findViewById(R.id.choose_codec);
-
-        mChooseSurface.setOnCheckedChangeListener(this);
-        mChooseCodec.setOnCheckedChangeListener(this);
 
         debugswitch = (Switch)findViewById(R.id.switch_set);
         vrswitch = (Switch)findViewById(R.id.switch_vr);
 
-        initSetting(choosedecode,chooseview,choosedebug,choosevr);
+        initSetting(choosedebug,choosevr);
 
         vrswitch.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
             @Override
@@ -84,36 +67,11 @@ public class SettingActivity extends AppCompatActivity implements RadioGroup.OnC
         });
     }
 
-    private void initSetting(String choosedecode, String chooseview,String choosedebug,String choosevr) {
-        radiosoft = (RadioButton)findViewById(R.id.use_sw);
-        radiohard = (RadioButton)findViewById(R.id.use_hw);
-        radiosurface = (RadioButton)findViewById(R.id.use_surfaceview);
-        radiotexture = (RadioButton)findViewById(R.id.use_textureview);
+    private void initSetting(String choosedebug,String choosevr) {
 
-        switch (choosedecode){
-            case Settings.USEHARD:
-                mChooseCodec.check(radiohard.getId());
-                break;
-            case Settings.USESOFT:
-                mChooseCodec.check(radiosoft.getId());
-                break;
-            default:
-                mChooseCodec.check(radiosoft.getId());
-                editor.putString("choose_decode",Settings.USESOFT);
-                break;
-        }
-        switch (chooseview){
-            case Settings.USESUFACE:
-                mChooseSurface.check(radiosurface.getId());
-                break;
-            case Settings.USETEXTURE:
-                mChooseSurface.check(radiotexture.getId());
-                break;
-            default:
-                mChooseSurface.check(radiosurface.getId());
-                editor.putString("choose_view",Settings.USESUFACE);
-                break;
-        }
+        editor.putString("choose_decode",Settings.USEHARD);
+        editor.putString("choose_view",Settings.USETEXTURE);
+
         switch (choosedebug){
             case Settings.DEBUGOFF:
                 debugswitch.setChecked(false);
@@ -143,29 +101,4 @@ public class SettingActivity extends AppCompatActivity implements RadioGroup.OnC
     }
 
 
-    @Override
-    public void onCheckedChanged(RadioGroup radioGroup, int i) {
-        switch(i){
-            case R.id.use_surfaceview:
-                editor.putString("choose_view",Settings.USESUFACE);
-                break;
-            case R.id.use_textureview:
-                editor.putString("choose_view",Settings.USETEXTURE);
-                break;
-            case R.id.use_hw:
-                mChooseSurface.check(radiotexture.getId());
-                //radiosurface.setEnabled(false);
-                Toast.makeText(SettingActivity.this, "硬解请使用TextureView", Toast.LENGTH_SHORT).show();
-                editor.putString("choose_decode",Settings.USEHARD);
-                editor.putString("choose_view",Settings.USETEXTURE);
-                break;
-            case  R.id.use_sw:
-                //radiosurface.setEnabled(true);
-                editor.putString("choose_decode",Settings.USESOFT);
-                break;
-            default:
-                break;
-        }
-        editor.commit();
-    }
 }

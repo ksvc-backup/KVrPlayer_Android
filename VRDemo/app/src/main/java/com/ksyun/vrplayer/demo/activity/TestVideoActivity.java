@@ -49,7 +49,6 @@ public class TestVideoActivity extends Activity {
     private String path;
 
 
-
     private ImageView vr_start;
     private SeekBar vrplayer_seekbar;
     private TextView vrplayer_time;
@@ -185,17 +184,13 @@ public class TestVideoActivity extends Activity {
             }
         };
 
-
         if(chooseview.equals(Settings.USESUFACE)){
             setContentView(R.layout.activity_md_using_surface_view);
         }else{
             setContentView(R.layout.activity_md_using_texture_view);
         }
-        if(choosedecode.equals(Settings.USEHARD)){
-            useHwCodec = true;
-        }else{
-            useHwCodec = false;
-        }
+
+        useHwCodec = true;
 
         vr_start = (ImageView)findViewById(R.id.vr_start);
         vrplayer_seekbar = (SeekBar)findViewById(R.id.vrplayer_seekbar);
@@ -223,7 +218,7 @@ public class TestVideoActivity extends Activity {
 
         if (useHwCodec) {
             //硬解264&265
-            mPlayer.setCodecFlag(KSYMediaPlayer.KSY_USE_MEDIACODEC_ALL);
+            mPlayer.setDecodeMode(KSYMediaPlayer.KSYDecodeMode.KSY_DECODE_MODE_AUTO);
         }
 
         initMedia();
@@ -260,8 +255,6 @@ public class TestVideoActivity extends Activity {
                     }
                 })
                 .init(R.id.spinner_projection);
-
-
     }
 
     private void initMedia() {
