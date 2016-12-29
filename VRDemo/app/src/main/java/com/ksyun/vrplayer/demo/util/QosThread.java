@@ -1,6 +1,5 @@
 package com.ksyun.vrplayer.demo.util;
 
-import android.app.ActivityManager;
 import android.content.Context;
 import android.os.Debug;
 import android.os.Handler;
@@ -9,33 +8,34 @@ import com.ksyun.vrplayer.demo.activity.VideoPlayerActivity;
 
 
 /**
- * Created by QianYi-Xin on 2015/6/1.
+ * @author xinbaicheng@kingsoft.com
+ * 2016/7/27.
  */
 public class QosThread extends Thread {
 
     private Context mContext;
     private Handler mHandler;
     private Cpu mCpuStats;
-    private ActivityManager mActivityManager;
     private Debug.MemoryInfo mi;
     private QosObject mQosObject;
+    private String mPackageName;
 
     private boolean mRunning;
 
-    public QosThread(ActivityManager manager, Handler handler,Context mContext) {
+    public QosThread(Context context, Handler handler) {
         mHandler = handler;
         mCpuStats = new Cpu();
-        mActivityManager = manager;
         mi = new Debug.MemoryInfo();
         mRunning = true;
         mQosObject = new QosObject();
-        this.mContext = mContext;
+        if(context != null)
+            mPackageName = context.getPackageName();
     }
 
     @Override
     public void run() {
         while(mRunning) {
-            mCpuStats.parseTopResults(mContext.getPackageName());
+            mCpuStats.parseTopResults(mPackageName);
 
             Debug.getMemoryInfo(mi);
 

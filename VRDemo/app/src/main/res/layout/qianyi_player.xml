@@ -5,14 +5,8 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:background="@color/player_black">
 
-    <SurfaceView
-        android:id="@+id/player_surface"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:layout_centerInParent="true"/>
-
-    <TextureView
-        android:id="@+id/player_texture"
+    <com.ksyun.media.player.KSYTextureView
+        android:id="@+id/texture_view"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         tools:targetApi="ice_cream_sandwich"
@@ -176,6 +170,18 @@
             android:textColor="@color/player_yellow"
             android:textSize="10dp"
             android:text="@string/Mute"/>
+
+
+        <Button
+            android:id="@+id/btn_replay"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginLeft="10dp"
+            android:layout_below="@+id/player_reload"
+            android:layout_toRightOf="@+id/btn_mute_player"
+            android:textColor="@color/player_yellow"
+            android:textSize="10dp"
+            android:text="重置播放器"/>
 
 
     </RelativeLayout>

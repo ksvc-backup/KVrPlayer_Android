@@ -34,6 +34,7 @@ import android.widget.Toast;
 import com.ksyun.media.player.IMediaPlayer;
 import com.ksyun.media.player.KSYMediaMeta;
 import com.ksyun.media.player.KSYMediaPlayer;
+import com.ksyun.media.player.KSYTextureView;
 import com.ksyun.media.player.misc.KSYQosInfo;
 import com.ksyun.vrplayer.demo.R;
 import com.ksyun.vrplayer.demo.model.Strings;
@@ -55,30 +56,23 @@ import java.util.TimerTask;
  * @author xinbocheng@qyvideo.cn
  * 2015/5/19.
  */
-public class VideoPlayerActivity extends Activity implements TextureView.SurfaceTextureListener,View.OnClickListener{
+public class VideoPlayerActivity extends Activity implements View.OnClickListener{
 
-    private static final String TAG = "VideoPlayerActivity";
+    private static final String TAG = "TextureVideoActivity";
 
     public static final int UPDATE_SEEKBAR = 0;
     public static final int HIDDEN_SEEKBAR = 1;
-    public static final int UPDATE_QOSMESS  = 2;
+    public static final int UPDATE_QOSMESS = 2;
     public static final int UPADTE_QOSVIEW = 3;
 
     private SharedPreferences settings;
-    private String chooseview;
     private String choosedecode;
     private String choosedebug;
 
     private Context mContext;
-    private KSYMediaPlayer ksyMediaPlayer;
     private QosThread mQosThread;
 
-    private Surface mSurface = null;
-    private SurfaceView mVideoSurfaceView = null;
-    private SurfaceHolder mSurfaceHolder = null;
-    private TextureView mVideoTextureView = null;
-    private SurfaceTexture mSurfaceTexture = null;
-
+    KSYTextureView mVideoView = null;
     private Handler mHandler;
 
     private LinearLayout mPlayerPanel;
@@ -103,7 +97,7 @@ public class VideoPlayerActivity extends Activity implements TextureView.Surface
     private Button screen;
     private Button rotate;
     private Button mute;
-
+    private Button mReplay;
     private Button mPlayerScaleVideo;
 
     private boolean mPlayerPanelShow = false;
@@ -121,48 +115,45 @@ public class VideoPlayerActivity extends Activity implements TextureView.Surface
     boolean useHwCodec = false;
 
     private Timer timer = null;
-    private TimerTask timerTask= null;
+    private TimerTask timerTask = null;
     private long bits;
     private KSYQosInfo info;
     private String cpuUsage;
     private int pss;
     private int rotatenum = 0;
 
-
     private String mDataSource;
 
     private IMediaPlayer.OnPreparedListener mOnPreparedListener = new IMediaPlayer.OnPreparedListener() {
         @Override
         public void onPrepared(IMediaPlayer mp) {
-
-            mVideoWidth = ksyMediaPlayer.getVideoWidth();
-            mVideoHeight = ksyMediaPlayer.getVideoHeight();
+            Log.d("VideoPlayer", "OnPrepared");
+            mVideoWidth = mVideoView.getVideoWidth();
+            mVideoHeight = mVideoView.getVideoHeight();
 
             // Set Video Scaling Mode
-            ksyMediaPlayer.setVideoScalingMode(KSYMediaPlayer.VIDEO_SCALING_MODE_SCALE_TO_FIT_WITH_CROPPING);
+            mVideoView.setVideoScalingMode(KSYMediaPlayer.VIDEO_SCALING_MODE_SCALE_TO_FIT_WITH_CROPPING);
 
             //start player
-            ksyMediaPlayer.start();
+            mVideoView.start();
 
             //set progress
             setVideoProgress(0);
 
-            //start hardware info thread
-            if (mQosThread != null)
+            if (mQosThread != null && !mQosThread.isAlive())
                 mQosThread.start();
 
 
-            if(ksyMediaPlayer.getServerAddress() != null)
-                mServerIp.setText("ServerIP: "+ ksyMediaPlayer.getServerAddress());
+            if (mVideoView.getServerAddress() != null)
+                mServerIp.setText("ServerIP: " + mVideoView.getServerAddress());
 
             //  get meta data
-            Bundle bundle = ksyMediaPlayer.getMediaMeta();
+            Bundle bundle = mVideoView.getMediaMeta();
             KSYMediaMeta meta = KSYMediaMeta.parse(bundle);
-            if (meta != null)
-            {
+            if (meta != null) {
                 if (meta.mHttpConnectTime > 0) {
                     double http_connection_time = Double.valueOf(meta.mHttpConnectTime);
-                    mHttpConnectionTime.setText("HTTP Connection Time: " + (int)http_connection_time);
+                    mHttpConnectionTime.setText("HTTP Connection Time: " + (int) http_connection_time);
                 }
 
                 int dns_time = meta.mAnalyzeDnsTime;
@@ -171,35 +162,19 @@ public class VideoPlayerActivity extends Activity implements TextureView.Surface
                 }
             }
 
-            mSdkVersion.setText("SDK version: " + ksyMediaPlayer.getVersion());
+            mSdkVersion.setText("SDK version: " + mVideoView.getVersion());
 
-            mVideoResolution.setText("Resolution:" + ksyMediaPlayer.getVideoWidth() + "x" + ksyMediaPlayer.getVideoHeight());
-//            mVideoResolution.setVisibility(View.VISIBLE);
-//            mFrameRate.setVisibility(View.VISIBLE);
-//            mVideoBitrate.setVisibility(View.VISIBLE);
+            mVideoResolution.setText("Resolution:" + mVideoView.getVideoWidth() + "x" + mVideoView.getVideoHeight());
 
             mStartTime = System.currentTimeMillis();
-            choosedebug = settings.getString("choose_debug","信息为空");
-            if(choosedebug.equals(Settings.DEBUGON)){
-                Log.e("VideoPlayer","开启");
-                mSdkVersion.setVisibility(View.VISIBLE);
-                mVideoResolution.setVisibility(View.VISIBLE);
-                mFrameRate.setVisibility(View.VISIBLE);
-                mVideoBitrate.setVisibility(View.VISIBLE);
-                mLoadText.setVisibility(View.VISIBLE);
-                mCpu.setVisibility(View.VISIBLE);
-                mMemInfo.setVisibility(View.VISIBLE);
-                mVideoBufferTime.setVisibility(View.VISIBLE);
-                mAudioBufferTime.setVisibility(View.VISIBLE);
-                mServerIp.setVisibility(View.VISIBLE);
-                mDNSTime.setVisibility(View.VISIBLE);
-                mHttpConnectionTime.setVisibility(View.VISIBLE);
-            }else{
-                Log.e("VideoPlayer","关闭");
+            choosedebug = settings.getString("choose_debug", "信息为空");
+            if (choosedebug.isEmpty() || choosedebug.equals(Settings.DEBUGOFF)) {
+                Log.e("VideoPlayer", "关闭");
                 mSdkVersion.setVisibility(View.GONE);
                 mVideoResolution.setVisibility(View.GONE);
                 mFrameRate.setVisibility(View.GONE);
                 mVideoBitrate.setVisibility(View.GONE);
+                mPlayerPosition.setVisibility(View.GONE);
                 mLoadText.setVisibility(View.GONE);
                 mCpu.setVisibility(View.GONE);
                 mMemInfo.setVisibility(View.GONE);
@@ -208,6 +183,23 @@ public class VideoPlayerActivity extends Activity implements TextureView.Surface
                 mServerIp.setVisibility(View.GONE);
                 mDNSTime.setVisibility(View.GONE);
                 mHttpConnectionTime.setVisibility(View.GONE);
+
+            } else {
+                Log.e("VideoPlayer", "开启");
+
+                mSdkVersion.setVisibility(View.VISIBLE);
+                mVideoResolution.setVisibility(View.VISIBLE);
+                mFrameRate.setVisibility(View.VISIBLE);
+                mVideoBitrate.setVisibility(View.VISIBLE);
+                mPlayerPosition.setVisibility(View.VISIBLE);
+                mLoadText.setVisibility(View.VISIBLE);
+                mCpu.setVisibility(View.VISIBLE);
+                mMemInfo.setVisibility(View.VISIBLE);
+                mVideoBufferTime.setVisibility(View.VISIBLE);
+                mAudioBufferTime.setVisibility(View.VISIBLE);
+                mServerIp.setVisibility(View.VISIBLE);
+                mDNSTime.setVisibility(View.VISIBLE);
+                mHttpConnectionTime.setVisibility(View.VISIBLE);
             }
         }
     };
@@ -215,22 +207,22 @@ public class VideoPlayerActivity extends Activity implements TextureView.Surface
     private IMediaPlayer.OnBufferingUpdateListener mOnBufferingUpdateListener = new IMediaPlayer.OnBufferingUpdateListener() {
         @Override
         public void onBufferingUpdate(IMediaPlayer mp, int percent) {
-            long duration = ksyMediaPlayer.getDuration();
-            long progress = duration * percent/100;
-            mPlayerSeekbar.setSecondaryProgress((int)progress);
+            long duration = mVideoView.getDuration();
+            long progress = duration * percent / 100;
+            mPlayerSeekbar.setSecondaryProgress((int) progress);
         }
     };
 
     private IMediaPlayer.OnVideoSizeChangedListener mOnVideoSizeChangeListener = new IMediaPlayer.OnVideoSizeChangedListener() {
         @Override
         public void onVideoSizeChanged(IMediaPlayer mp, int width, int height, int sarNum, int sarDen) {
-            if(mVideoWidth > 0 && mVideoHeight > 0) {
-                if(width != mVideoWidth || height != mVideoHeight) {
+            if (mVideoWidth > 0 && mVideoHeight > 0) {
+                if (width != mVideoWidth || height != mVideoHeight) {
                     mVideoWidth = mp.getVideoWidth();
                     mVideoHeight = mp.getVideoHeight();
 
-                    if(ksyMediaPlayer != null)
-                        ksyMediaPlayer.setVideoScalingMode(KSYMediaPlayer.VIDEO_SCALING_MODE_SCALE_TO_FIT_WITH_CROPPING);
+                    if (mVideoView != null)
+                        mVideoView.setVideoScalingMode(KSYMediaPlayer.VIDEO_SCALING_MODE_SCALE_TO_FIT_WITH_CROPPING);
                 }
             }
         }
@@ -254,11 +246,10 @@ public class VideoPlayerActivity extends Activity implements TextureView.Surface
     private IMediaPlayer.OnErrorListener mOnErrorListener = new IMediaPlayer.OnErrorListener() {
         @Override
         public boolean onError(IMediaPlayer mp, int what, int extra) {
-            switch (what)
-            {
-                case KSYMediaPlayer.MEDIA_ERROR_UNKNOWN:
-                    Log.e(TAG, "OnErrorListener, Error Unknown:" + what + ",extra:" + extra);
-                    break;
+            switch (what) {
+                //case KSYVideoView.MEDIA_ERROR_UNKNOWN:
+                // Log.e(TAG, "OnErrorListener, Error Unknown:" + what + ",extra:" + extra);
+                //  break;
                 default:
                     Log.e(TAG, "OnErrorListener, Error:" + what + ",extra:" + extra);
             }
@@ -287,8 +278,8 @@ public class VideoPlayerActivity extends Activity implements TextureView.Surface
                     break;
                 case KSYMediaPlayer.MEDIA_INFO_SUGGEST_RELOAD:
                     // Player find a new stream(video or audio), and we could reload the video.
-                    if(ksyMediaPlayer != null)
-                        ksyMediaPlayer.reload(mDataSource, false);
+                    if(mVideoView != null)
+                        mVideoView.reload(mDataSource, false, KSYMediaPlayer.KSYReloadMode.KSY_RELOAD_MODE_ACCURATE);
                     break;
                 case KSYMediaPlayer.MEDIA_INFO_RELOADED:
                     Toast.makeText(mContext, "Succeed to reload video.", Toast.LENGTH_SHORT).show();
@@ -307,12 +298,12 @@ public class VideoPlayerActivity extends Activity implements TextureView.Surface
             mHandler.removeMessages(HIDDEN_SEEKBAR);
             Message msg = new Message();
             msg.what = HIDDEN_SEEKBAR;
-            mHandler.sendMessageDelayed(msg,3000);
-            if(ksyMediaPlayer != null) {
-                if(mode == 1)
-                    ksyMediaPlayer.setVideoScalingMode(KSYMediaPlayer.VIDEO_SCALING_MODE_SCALE_TO_FIT_WITH_CROPPING);
+            mHandler.sendMessageDelayed(msg, 3000);
+            if (mVideoView != null) {
+                if (mode == 1)
+                    mVideoView.setVideoScalingMode(KSYMediaPlayer.VIDEO_SCALING_MODE_SCALE_TO_FIT_WITH_CROPPING);
                 else
-                    ksyMediaPlayer.setVideoScalingMode(KSYMediaPlayer.VIDEO_SCALING_MODE_SCALE_TO_FIT);
+                    mVideoView.setVideoScalingMode(KSYMediaPlayer.VIDEO_SCALING_MODE_SCALE_TO_FIT);
             }
         }
     };
@@ -322,10 +313,9 @@ public class VideoPlayerActivity extends Activity implements TextureView.Surface
         super.onCreate(savedInstanceState);
 
         mContext = this.getApplicationContext();
-        useHwCodec = getIntent().getBooleanExtra("HWCodec",false);
+        useHwCodec = getIntent().getBooleanExtra("HWCodec", false);
 
         setContentView(R.layout.qianyi_player);
-
 
         mPlayerPanel = (LinearLayout) findViewById(R.id.player_panel);
         mPlayerStartBtn = (ImageView) findViewById(R.id.player_start);
@@ -344,15 +334,17 @@ public class VideoPlayerActivity extends Activity implements TextureView.Surface
         mDNSTime = (TextView) findViewById(R.id.player_dns_time);
         mHttpConnectionTime = (TextView) findViewById(R.id.player_http_connection_time);
 
-        toppanel = (RelativeLayout)findViewById(R.id.topPanel_player);
-        reload = (Button)findViewById(R.id.player_reload);
-        rotate = (Button)findViewById(R.id.btn_rotate_player);
-        screen = (Button)findViewById(R.id.btn_screen_player);
-        mute = (Button)findViewById(R.id.btn_mute_player);
+        toppanel = (RelativeLayout) findViewById(R.id.topPanel_player);
+        reload = (Button) findViewById(R.id.player_reload);
+        rotate = (Button) findViewById(R.id.btn_rotate_player);
+        screen = (Button) findViewById(R.id.btn_screen_player);
+        mute = (Button) findViewById(R.id.btn_mute_player);
+        mReplay = (Button) findViewById(R.id.btn_replay);
         reload.setOnClickListener(this);
         rotate.setOnClickListener(this);
         screen.setOnClickListener(this);
         mute.setOnClickListener(this);
+        mReplay.setOnClickListener(this);
 
 
         mPlayerScaleVideo = (Button) findViewById(R.id.player_scale);
@@ -362,22 +354,12 @@ public class VideoPlayerActivity extends Activity implements TextureView.Surface
         mPlayerSeekbar.setOnSeekBarChangeListener(mSeekBarListener);
         mPlayerSeekbar.setEnabled(true);
 
-        mVideoTextureView = (TextureView) findViewById(R.id.player_texture);
-        mVideoTextureView.setSurfaceTextureListener(this);
-        mVideoTextureView.setOnTouchListener(mTouchListener);
-        mVideoTextureView.setKeepScreenOn(true);
-
-
-        mVideoSurfaceView = (SurfaceView) findViewById(R.id.player_surface);
-        mSurfaceHolder = mVideoSurfaceView.getHolder();
-        mSurfaceHolder.addCallback(mSurfaceCallback);
-        mVideoSurfaceView.setOnTouchListener(mTouchListener);
-        mVideoSurfaceView.setKeepScreenOn(true);
-
+        mVideoView = (KSYTextureView) findViewById(R.id.texture_view);
+        mVideoView.setOnTouchListener(mTouchListener);
+        mVideoView.setKeepScreenOn(true);
         this.setVolumeControlStream(AudioManager.STREAM_MUSIC);
 
-
-        mHandler = new Handler(){
+        mHandler = new Handler() {
             @Override
             public void handleMessage(Message msg) {
                 super.handleMessage(msg);
@@ -391,29 +373,28 @@ public class VideoPlayerActivity extends Activity implements TextureView.Surface
                         toppanel.setVisibility(View.GONE);
                         break;
                     case UPDATE_QOSMESS:
-                        if(msg.obj instanceof QosObject) {
-                            updateQosInfo((QosObject)msg.obj);
+                        if (msg.obj instanceof QosObject) {
+                            updateQosInfo((QosObject) msg.obj);
                         }
                         break;
                     case UPADTE_QOSVIEW:
                         updateQosView();
                         break;
                 }
-
             }
         };
 
-        if(timerTask ==null){
+        if (timerTask == null) {
             timerTask = new TimerTask() {
                 @Override
                 public void run() {
-                    try{
+                    try {
                         Message message = new Message();
                         message.what = VideoPlayerActivity.UPADTE_QOSVIEW;
-                        if(message!=null){
+                        if (mHandler != null && message != null) {
                             mHandler.sendMessage(message);
                         }
-                    }catch(NullPointerException e){
+                    } catch (NullPointerException e) {
                         e.printStackTrace();
                     }
 
@@ -421,106 +402,78 @@ public class VideoPlayerActivity extends Activity implements TextureView.Surface
             };
         }
 
-        if(timer == null){
+        if (timer == null) {
             timer = new Timer(true);
         }
 
-        timer.schedule(timerTask,2000,5000);
+        timer.schedule(timerTask, 2000, 5000);
 
-
-        ActivityManager activityManager = (ActivityManager) getSystemService(ACTIVITY_SERVICE);
-
-        mQosThread = new QosThread(activityManager, mHandler,mContext);
+        mQosThread = new QosThread(mContext, mHandler);
 
         mDataSource = getIntent().getStringExtra("path");
 
-        ksyMediaPlayer = new KSYMediaPlayer.Builder(mContext).build();
-        ksyMediaPlayer.setOnBufferingUpdateListener(mOnBufferingUpdateListener);
-        ksyMediaPlayer.setOnCompletionListener(mOnCompletionListener);
-        ksyMediaPlayer.setOnPreparedListener(mOnPreparedListener);
-        ksyMediaPlayer.setOnInfoListener(mOnInfoListener);
-        ksyMediaPlayer.setOnVideoSizeChangedListener(mOnVideoSizeChangeListener);
-        ksyMediaPlayer.setOnErrorListener(mOnErrorListener);
-        ksyMediaPlayer.setOnSeekCompleteListener(mOnSeekCompletedListener);
-        ksyMediaPlayer.setScreenOnWhilePlaying(true);
-        ksyMediaPlayer.setBufferTimeMax(5);
+        mVideoView.setOnBufferingUpdateListener(mOnBufferingUpdateListener);
+        mVideoView.setOnCompletionListener(mOnCompletionListener);
+        mVideoView.setOnPreparedListener(mOnPreparedListener);
+        mVideoView.setOnInfoListener(mOnInfoListener);
+        mVideoView.setOnVideoSizeChangedListener(mOnVideoSizeChangeListener);
+        mVideoView.setOnErrorListener(mOnErrorListener);
+        mVideoView.setOnSeekCompleteListener(mOnSeekCompletedListener);
+        mVideoView.setScreenOnWhilePlaying(true);
+        mVideoView.setBufferTimeMax(3.0f);
+        mVideoView.setTimeout(5, 30);
 
+        settings = getSharedPreferences("SETTINGS", Context.MODE_PRIVATE);
+        choosedecode = settings.getString("choose_decode", "undefind");
 
-        settings = getSharedPreferences("SETTINGS",Context.MODE_PRIVATE);
-        choosedecode = settings.getString("choose_decode","undefind");
-        chooseview = settings.getString("choose_view","undefind");
-
-        if(chooseview.equals(Settings.USESUFACE)){
-            mVideoTextureView.setVisibility(View.GONE);
-        }else{
-            mVideoSurfaceView.setVisibility(View.GONE);
-        }
-
-        if(choosedecode.equals(Settings.USEHARD)){
+        if (choosedecode.equals(Settings.USEHARD)) {
             useHwCodec = true;
-        }else{
+        } else {
             useHwCodec = false;
         }
 
 
         if (useHwCodec) {
             //硬解264&265
-            ksyMediaPlayer.setCodecFlag(KSYMediaPlayer.KSY_USE_MEDIACODEC_ALL);
+            Log.e(TAG, "Hardware !!!!!!!!");
+            mVideoView.setDecodeMode(KSYMediaPlayer.KSYDecodeMode.KSY_DECODE_MODE_AUTO);
         }
+
         try {
-            ksyMediaPlayer.setDataSource(mDataSource);
-            ksyMediaPlayer.prepareAsync();
+            mVideoView.setDataSource(mDataSource);
         } catch (IOException e) {
             e.printStackTrace();
         }
+        mVideoView.prepareAsync();
     }
-
 
 
     @Override
     protected void onDestroy() {
         super.onDestroy();
         timer.cancel();
-        mVideoTextureView = null;
-        mSurfaceTexture = null;
+        mVideoView = null;
     }
 
     @Override
     protected void onPause() {
         super.onPause();
-        if(ksyMediaPlayer != null)
-        {
-            ksyMediaPlayer.pause();
-            mPause = true;
+
+        if (mVideoView != null) {
+            mVideoView.runInBackground(true);
         }
     }
 
     @Override
     protected void onResume() {
         super.onResume();
-        reinitTextureView((TextureView)findViewById(R.id.player_texture));
-        if(ksyMediaPlayer != null)
-        {
-            ksyMediaPlayer.start();
-            mPause = false;
+        if (mVideoView != null) {
+            mVideoView.runInForeground();
         }
     }
-
-    //android <=4.4 后台切回后不会再触发onSurfaceTextureAvailable，所以在此处调用setSurfaceTexture
-    public void reinitTextureView(TextureView view) {
-        mVideoTextureView = view;
-        mVideoTextureView.setSurfaceTextureListener(this);
-        //需要检测Texture是否是available，否则在某些设备上会引起崩溃
-        if (!mVideoTextureView.isAvailable()) {
-            if (mSurfaceTexture != null) {
-                mVideoTextureView.setSurfaceTexture(mSurfaceTexture);
-            }
-        }
-    }
-
     @Override
     public boolean onKeyDown(int keyCode, KeyEvent event) {
-        if(keyCode == KeyEvent.KEYCODE_BACK) {
+        if (keyCode == KeyEvent.KEYCODE_BACK) {
             videoPlayEnd();
         }
 
@@ -537,58 +490,19 @@ public class VideoPlayerActivity extends Activity implements TextureView.Surface
         super.onConfigurationChanged(newConfig);
     }
 
-    private void scaleVideoView()
-    {
-        if(ksyMediaPlayer == null || ksyMediaPlayer.getVideoHeight() <= 0 || mVideoSurfaceView == null)
-            return;
-
-        WindowManager wm = this.getWindowManager();
-        int sw = wm.getDefaultDisplay().getWidth();
-        int sh = wm.getDefaultDisplay().getHeight();
-        int videoWidth = mVideoWidth;
-        int videoHeight = mVideoHeight;
-        int visibleWidth = 0;
-        int visibleHeight = 0;
-
-        if(getResources().getConfiguration().orientation == Configuration.ORIENTATION_PORTRAIT)
-        {
-            visibleWidth = sw > sh ? sh : sw;
-            visibleHeight = (int) Math.ceil(visibleWidth * videoHeight / videoWidth);
-        }
-        else if (getResources().getConfiguration().orientation == Configuration.ORIENTATION_LANDSCAPE) {
-
-            if(videoHeight*sw > videoWidth*sh)
-            {
-                visibleHeight = sh;
-                visibleWidth = (int) Math.ceil(videoWidth * visibleHeight / videoHeight);
-            }
-            else
-            {
-                visibleWidth = sw;
-                visibleHeight = (int) Math.ceil(visibleWidth * videoHeight / videoWidth);
-            }
-        }
-
-        LayoutParams lp = mVideoSurfaceView.getLayoutParams();
-        lp.width = visibleWidth;
-        lp.height = visibleHeight;
-        mVideoSurfaceView.setLayoutParams(lp);
-
-        mVideoSurfaceView.invalidate();
-    }
 
     // Maybe we could support gesture detect
     private void dealTouchEvent(View view, MotionEvent event) {
         mPlayerPanelShow = !mPlayerPanelShow;
 
-        if(mPlayerPanelShow) {
+        if (mPlayerPanelShow) {
             mPlayerPanel.setVisibility(View.VISIBLE);
             toppanel.setVisibility(View.VISIBLE);
 
             Message msg = new Message();
             msg.what = HIDDEN_SEEKBAR;
             mHandler.sendMessageDelayed(msg, 3000);
-        }else{
+        } else {
             mPlayerPanel.setVisibility(View.GONE);
             toppanel.setVisibility(View.GONE);
             mHandler.removeMessages(HIDDEN_SEEKBAR);
@@ -597,18 +511,17 @@ public class VideoPlayerActivity extends Activity implements TextureView.Surface
 
     public int setVideoProgress(int currentProgress) {
 
-        if(ksyMediaPlayer == null)
+        if (mVideoView == null)
             return -1;
 
-        long time = currentProgress > 0 ? currentProgress : ksyMediaPlayer.getCurrentPosition();
-        long length = ksyMediaPlayer.getDuration();
+        long time = currentProgress > 0 ? currentProgress : mVideoView.getCurrentPosition();
+        long length = mVideoView.getDuration();
 
         // Update all view elements
-        mPlayerSeekbar.setMax((int)length);
-        mPlayerSeekbar.setProgress((int)time);
+        mPlayerSeekbar.setMax((int) length);
+        mPlayerSeekbar.setProgress((int) time);
 
-        if(time >= 0)
-        {
+        if (time >= 0) {
             String progress = Strings.millisToString(time) + "/" + Strings.millisToString(length);
             mPlayerPosition.setText(progress);
         }
@@ -616,9 +529,9 @@ public class VideoPlayerActivity extends Activity implements TextureView.Surface
         Message msg = new Message();
         msg.what = UPDATE_SEEKBAR;
 
-        if(mHandler != null)
+        if (mHandler != null)
             mHandler.sendMessageDelayed(msg, 1000);
-        return (int)time;
+        return (int) time;
     }
 
     private void updateQosInfo(QosObject obj) {
@@ -626,33 +539,30 @@ public class VideoPlayerActivity extends Activity implements TextureView.Surface
         pss = obj.pss;
 
 
-        if(ksyMediaPlayer != null)
-        {
-            bits = ksyMediaPlayer.getDecodedDataSize() * 8 / (mPause ? mPauseStartTime - mPausedTime - mStartTime : System.currentTimeMillis() - mPausedTime - mStartTime);
+        if (mVideoView != null) {
+            bits = mVideoView.getDecodedDataSize() * 8 / (mPause ? mPauseStartTime - mPausedTime - mStartTime : System.currentTimeMillis() - mPausedTime - mStartTime);
 
-            info = ksyMediaPlayer.getStreamQosInfo();
+            info = mVideoView.getStreamQosInfo();
 
         }
-
     }
 
-    private void updateQosView(){
-        mCpu.setText("Cpu usage:"+cpuUsage);
+    private void updateQosView() {
+        mCpu.setText("Cpu usage:" + cpuUsage);
         mMemInfo.setText("Memory:" + pss + " KB");
 
-        if(ksyMediaPlayer != null) {
+        if (mVideoView != null) {
             mVideoBitrate.setText("Bitrate: " + bits + " kb/s");
-            mFrameRate.setText("VideoOutputFrameRate:" + ksyMediaPlayer.getVideoOutputFramesPerSecond());
+            mFrameRate.setText("VideoOutputFrameRate:" + mVideoView.getVideoOutputFramesPerSecond());
 
-            if(info != null) {
+            if (info != null) {
                 mVideoBufferTime.setText("VideoBufferTime:" + info.videoBufferTimeLength + "(ms)");
                 mAudioBufferTime.setText("AudioBufferTime:" + info.audioBufferTimeLength + "(ms)");
             }
         }
     }
 
-    private String md5(String string)
-    {
+    private String md5(String string) {
         byte[] hash;
         try {
             hash = MessageDigest.getInstance("MD5").digest(string.getBytes());
@@ -670,13 +580,12 @@ public class VideoPlayerActivity extends Activity implements TextureView.Surface
     }
 
     private void videoPlayEnd() {
-        if(ksyMediaPlayer != null)
-        {
-            ksyMediaPlayer.release();
-            ksyMediaPlayer = null;
+        if (mVideoView != null) {
+            mVideoView.release();
+            mVideoView = null;
         }
 
-        if(mQosThread != null) {
+        if (mQosThread != null) {
             mQosThread.stopThread();
             mQosThread = null;
         }
@@ -693,14 +602,14 @@ public class VideoPlayerActivity extends Activity implements TextureView.Surface
             mHandler.removeMessages(HIDDEN_SEEKBAR);
             Message msg = new Message();
             msg.what = HIDDEN_SEEKBAR;
-            mHandler.sendMessageDelayed(msg,3000);
-            if(mPause) {
+            mHandler.sendMessageDelayed(msg, 3000);
+            if (mPause) {
                 mPlayerStartBtn.setBackgroundResource(R.drawable.qyvideo_pause_btn);
-                ksyMediaPlayer.pause();
+                mVideoView.pause();
                 mPauseStartTime = System.currentTimeMillis();
-            }else {
+            } else {
                 mPlayerStartBtn.setBackgroundResource(R.drawable.qyvideo_start_btn);
-                ksyMediaPlayer.start();
+                mVideoView.start();
                 mPausedTime += System.currentTimeMillis() - mPauseStartTime;
                 mPauseStartTime = 0;
             }
@@ -711,12 +620,12 @@ public class VideoPlayerActivity extends Activity implements TextureView.Surface
     private SeekBar.OnSeekBarChangeListener mSeekBarListener = new SeekBar.OnSeekBarChangeListener() {
         @Override
         public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
-            if(fromUser) {
+            if (fromUser) {
                 mVideoProgress = progress;
                 mHandler.removeMessages(HIDDEN_SEEKBAR);
                 Message msg = new Message();
                 msg.what = HIDDEN_SEEKBAR;
-                mHandler.sendMessageDelayed(msg,3000);
+                mHandler.sendMessageDelayed(msg, 3000);
             }
         }
 
@@ -727,7 +636,7 @@ public class VideoPlayerActivity extends Activity implements TextureView.Surface
 
         @Override
         public void onStopTrackingTouch(SeekBar seekBar) {
-            ksyMediaPlayer.seekTo(mVideoProgress);
+            mVideoView.seekTo(mVideoProgress);
             setVideoProgress(mVideoProgress);
         }
     };
@@ -740,108 +649,69 @@ public class VideoPlayerActivity extends Activity implements TextureView.Surface
         }
     };
 
-    private final SurfaceHolder.Callback mSurfaceCallback = new Callback() {
-        @Override
-        public void surfaceChanged(SurfaceHolder holder, int format, int width, int height) {
-            if(ksyMediaPlayer != null && ksyMediaPlayer.isPlaying())
-                ksyMediaPlayer.setVideoScalingMode(KSYMediaPlayer.VIDEO_SCALING_MODE_SCALE_TO_FIT_WITH_CROPPING);
-        }
-
-        @Override
-        public void surfaceCreated(SurfaceHolder holder) {
-            if(ksyMediaPlayer != null)
-                ksyMediaPlayer.setDisplay(holder);
-        }
-
-        @Override
-        public void surfaceDestroyed(SurfaceHolder holder) {
-            Log.d(TAG, "surfaceDestroyed");
-            if(ksyMediaPlayer != null) {
-                ksyMediaPlayer.setDisplay(null);
-            }
-        }
-    };
-
-    @Override
-    public void onSurfaceTextureAvailable(SurfaceTexture surface, int i, int i1) {
-        if(mSurfaceTexture == null) {
-            mSurfaceTexture = surface;
-        }
-        if (mSurface == null){
-            mSurface = new Surface(mSurfaceTexture);
-        }
-
-        if (ksyMediaPlayer != null){
-            ksyMediaPlayer.setSurface(mSurface);
-        }
-    }
-
-    @Override
-    public void onSurfaceTextureSizeChanged(SurfaceTexture surfaceTexture, int i, int i1) {
-
-    }
-
-    @Override
-    public boolean onSurfaceTextureDestroyed(SurfaceTexture surfaceTexture) {
-        return false;
-    }
-
-    @Override
-    public void onSurfaceTextureUpdated(SurfaceTexture surfaceTexture) {
-
-    }
 
     @Override
     public void onClick(View view) {
         mHandler.removeMessages(HIDDEN_SEEKBAR);
         Message msg = new Message();
         msg.what = HIDDEN_SEEKBAR;
-        mHandler.sendMessageDelayed(msg,3000);
-        switch (view.getId()){
+        mHandler.sendMessageDelayed(msg, 3000);
+        switch (view.getId()) {
             case R.id.player_reload:
-                String mVideoUrl1 = mDataSource;
                 String mVideoUrl2 = "rtmp://live.hkstv.hk.lxdns.com/live/hks";
-                // 重新链接
-                ksyMediaPlayer.reload(mVideoUrl1, false);
                 // 播放新的视频
-                ksyMediaPlayer.reload(mVideoUrl2, true);
+                mVideoView.reload(mVideoUrl2, true);
+
                 break;
             case R.id.btn_rotate_player:
-                if (useHwCodec){
-                    Toast.makeText(VideoPlayerActivity.this, "旋屏请设置软解", Toast.LENGTH_SHORT).show();
-                }else{
-                    ksyMediaPlayer.setRotateDegree((rotatenum+90)%360);
-                    rotatenum += 90;
-                }
-                break;
+            {
+                mVideoView.setRotateDegree((rotatenum + 90) % 360);
+                rotatenum += 90;
+            }
+            break;
             case R.id.btn_screen_player:
-                if (useHwCodec){
-                    Toast.makeText(VideoPlayerActivity.this, "截图请设置软解", Toast.LENGTH_SHORT).show();
-                }else{
-                    Bitmap bitmap = ksyMediaPlayer.getScreenShot();
-                    savebitmap(bitmap);
-                    if(bitmap!=null){
-                        Toast.makeText(VideoPlayerActivity.this, "截图成功", Toast.LENGTH_SHORT).show();
-                    }
+            {
+                Bitmap bitmap = mVideoView.getScreenShot();
+                savebitmap(bitmap);
+                if (bitmap != null) {
+                    Toast.makeText(VideoPlayerActivity.this, "截图成功", Toast.LENGTH_SHORT).show();
                 }
-                break;
+            }
+            break;
             case R.id.btn_mute_player:
-                if(ksyMediaPlayer!=null){
-                    if(mmute == false){
-                        ksyMediaPlayer.setPlayerMute(1);
+                if (mVideoView != null) {
+                    if (mmute == false) {
+                        mVideoView.setPlayerMute(1);
                         mmute = true;
-                    }else{
-                        ksyMediaPlayer.setPlayerMute(0);
+                    } else {
+                        mVideoView.setPlayerMute(0);
                         mmute = false;
                     }
                 }
+                break;
+            case R.id.btn_replay:
+                if (mVideoView != null){
+                    mVideoView.stop();
+                    mVideoView.reset();
+                    if (useHwCodec) {
+                        mVideoView.setDecodeMode(KSYMediaPlayer.KSYDecodeMode.KSY_DECODE_MODE_AUTO);
+                    }
+                    //other settings.....
+                    try {
+                        mVideoView.setDataSource("rtmp://live.hkstv.hk.lxdns.com/live/hks");
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                    mVideoView.prepareAsync();
+                }
+                break;
             default:
                 break;
         }
     }
 
-    public void savebitmap(Bitmap bitmap){
-        File appDir = new File(Environment.getExternalStorageDirectory(),"com.ksy.recordlib.demo.demo");
+    public void savebitmap(Bitmap bitmap) {
+        File appDir = new File(Environment.getExternalStorageDirectory(), "com.ksy.recordlib.demo.demo");
         if (!appDir.exists()) {
             appDir.mkdir();
         }
